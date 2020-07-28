@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>五子棋</title>
+        <script src="//cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+            }
+            body {
+                margin: 0;
+                padding: 30px;
+                background-color: wheat;
+            }
+            .white, .black {
+                display: block;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+            }
+            td {
+                padding: 2px;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                overflow: hidden;
+            }
+            .white {
+                border: 1px solid #f1f1f1;
+                background-color: #fff;
+            }
+            .black {
+                background-color: #000;
+            }
+            .reset {
+                width: 60px;
+                height: 36px;
+                background-color: #4e6ef2;
+                color: #fff;
+                border-radius: 3px;
+                font-size: 16px;
+                box-shadow: none;
+                font-weight: 400;
+                border: 0;
+                outline: 0;
+                cursor: pointer;
+                letter-spacing: normal;
+            }
+            .flex {
+                display: flex;
+            }
+            .align-cneter {
+                align-items: center;
+            }
+            .mar-t20 {
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <script id="table" type="template/text">
+           <div class="flex">
+               <div style="height:100px;width:300px">
+                   <div class="flex align">
+                        <span style="width: 100px">当前：第{{ logs.length + 1 }}手 </span>
+                        <div :class="current === 1 ? 'black' : 'white'"></div>
+                   </div>
+                   
+                    <button @click="reset" class="reset mar-t20">重置</button>
+               </div>
+                <table border="1" cellspacing="0">
+                    <tr v-for="(row, y) in checkerboard" :key="y">
+                        <td
+                            v-for="(col, x) in row"
+                            :key="'col' + y + '-' + x"
+                            @click="tap(y, x)"
+                        >
+                            <div v-show="col !== ''" :class="col === 1 ? 'black' : 'white'"></div>
+                        </td>
+                    </tr>
+                </table>
+           </div>
+        </script>
+        <div id="app"></div>
+
+        <script>
+            const MAX = 15
+            const MAX_INDEX = MAX - 1
+            const CHECKERBOARD = Array(MAX).fill('').map(() => Array(MAX).fill(''))
+
+            const app = new Vue({
+                el: '#app',
+                data: {
+                    isEnd: false,
+                    checkerboard: JSON.parse(JSON.stringify(CHECKERBOARD)),
+                    current: 1,
+                    logs: []
+                },
+                methods: {
+                    reset () {
+                        this.checkerboard = JSON.parse(JSON.stringify(CHECKERBOARD))
+                        this.current = 1
+                        this.isEnd = false
+                    },
+                    check_victory (arr, current) {
+                        let total = 0
+                        let len = arr.length
+                        if (len < 5) {
+                            return false
+                        }
+
+                        for (let i = 0; i < len; i++) {
+                            if (arr[i] === current) {
+                                if (++total >= 5) {
+                                    return true
+                                }
+                            } else {
+                                total = 0
+                            }
+                        }
+                        return false
+
+                    },
+                    h_check (y, x, current) {
+                        const s = x - 4 < 0 ? 0 : x - 4 // 横的开始边界
+                        const arr = [...this.checkerboard[y]].splice(s, 9)
+                        return this.check_victory(arr, current)
+                    },
+                    v_check (y, x, current) {
+                        let s = y - 4 < 0 ? 0 : y - 4 // 竖的开始边界
+                        const e = y + 4 > MAX_INDEX ? MAX_INDEX : y + 4 // 竖的结束边界
+                        const arr = []
+                        for(;s <= e; s++) {
+                            arr.push(this.checkerboard[s][x])
+                        }
+                        return this.check_victory(arr, current)
+                    },
+                    t2b_check (y, x, current) {
+                        const checkerboard = this.checkerboard
+                        const arr = [current]
+
+                        for(let i = 1; i < 5; i++) {
+                            const _y = y - i
+                            const _x = x - i
+                            if (_y < 0 || _x < 0) {
+                                continue
+                            }
+                            arr.unshift(checkerboard[_y][_x])
+                        }
+
+                        for(let i = 1; i < 5; i++) {
+                            const _y = y + i
+                            const _x = x + i
+                            if (_y > MAX_INDEX || _x > MAX_INDEX) {
+                                continue
+                            }
+                            arr.push(checkerboard[_y][_x])
+                        }
+
+                        return this.check_victory(arr, current)
+                    },
+                    b2t_check (y, x, current) {
+                        const checkerboard = this.checkerboard
+                        const arr = [current]
+
+                        for(let i = 1; i < 5; i++) {
+                            const _y = y + i
+                            const _x = x - i
+                            if (_y > MAX_INDEX || _x < 0) {
+                                continue
+                            }
+                            arr.unshift(checkerboard[_y][_x])
+                        }
+
+                        for(let i = 1; i < 5; i++) {
+                            const _y = y - i
+                            const _x = x + i
+                            if (_y < 0 || _x > MAX_INDEX) {
+                                continue
+                            }
+                            arr.push(checkerboard[_y][_x])
+                        }
+
+                        return this.check_victory(arr, current)
+                    },
+                    tap(y, x) {
+                        const current = this.current
+                        const row = this.checkerboard[y]
+                        const val = row[x]
+                        if (val !== '' || this.isEnd) {
+                            return false
+                        }
+                        row[x] = this.current
+                        this.$set(this.checkerboard, y, row)
+                        this.current = current === 1 ? 2 : 1
+                        this.logs.push({ x: x + 1, y: y + 1 })
+                        if (
+                            this.h_check(y, x, current) ||
+                            this.v_check(y, x, current) ||
+                            this.t2b_check(y, x, current) || 
+                            this.b2t_check(y, x, current)
+                        ) {
+                            this.isEnd = true
+                            setTimeout(() => {
+                                alert(`${current === 1 ? '黑' : '白'}棋子获胜`)
+                            }, 200)
+                        }
+                        
+                    }
+                },
+                template: document.getElementById('table').innerText
+            })
+        </script>
+    </body>
+</html>
